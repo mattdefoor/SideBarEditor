@@ -14,6 +14,21 @@
 @synthesize _tableView;
 @synthesize _tableContents;
 
+#pragma mark -Startup Methods-
+- (void)applicationDidFinishLaunching:(NSNotification *)notification
+{
+  // Register for dragged types for drag and drop. We only accept NSURL types.
+  [_tableView registerForDraggedTypes: [NSArray arrayWithObjects:NSURLPboardType, nil]];
+  [_tableView setDoubleAction:@selector(openPath)];
+  [_tableView setTarget:self];
+  
+  _tableContents = [[NSMutableArray alloc] init];
+
+  [self readSidebar];
+}
+
+#pragma mark -Action Methods-
+
 - (IBAction)refreshAction:(id)sender
 {
   [self readSidebar];
@@ -21,27 +36,62 @@
 
 - (IBAction)addItem:(id)sender
 {
-  NSLog(@"adding item");
+  NSOpenPanel *panel = [NSOpenPanel openPanel];
+  
+  [panel setCanChooseFiles:NO];
+  [panel setCanChooseDirectories:YES];
+  [panel setAllowsMultipleSelection:YES];
+  [panel setMessage:@"Select one or more directories."];
+  
+  // This method displays the panel and returns immediately.
+  // The completion handler is called when the user selects an
+  // item or cancels the panel.
+  [panel beginSheetModalForWindow:[self window] completionHandler:^(NSInteger result)
+  {
+    if (result == NSFileHandlingPanelOKButton)
+    {
+      NSArray *urls = [panel URLs];
+      
+      for (NSURL *url in urls)
+      {
+        CFBooleanRef boolRef = kCFBooleanTrue;
+        NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:(__bridge id)(boolRef), @"Managed", nil];
+        
+        [self addToSharedList:url
+                         type:(__bridge NSString *)kLSSharedFileListFavoriteItems
+                   atPosition:kLSSharedFileListItemLast
+               withDictionary:dictionary];
+      }
+    }
+  }];
 }
 
 - (IBAction)removeItem:(id)sender
 {
-  NSLog(@"removing item");
+  if ([_tableView selectedRow] != -1)
+  {
+    EXShareListItemCustomProperties *item = [_tableContents objectAtIndex:[_tableView selectedRow]];
+    
+    if ([self removeFromSharedList:[item url] type:nil name:[item name]])
+    {
+      NSLog(@"Removed item \'%@\' for path \'%@\' from sidebar.", [item name], [[item url] path]);
+      [self readSidebar];
+    }
+  }
 }
 
-- (void)applicationDidFinishLaunching:(NSNotification*)notification
+- (void)openPath
 {
-  _tableContents = [[NSMutableArray alloc] init];
+  NSInteger row = [_tableView clickedRow];
   
-  [self readSidebar];
+  if (row != -1)
+  {
+    EXShareListItemCustomProperties *item = [_tableContents objectAtIndex:row];
+    [[NSWorkspace sharedWorkspace] openURL:[item url]];
+  }
 }
 
-- (void)awakeFromNib
-{
-  // Register for dragged types for drag and drop. We only accept NSURL types.
-  [_tableView registerForDraggedTypes: [NSArray arrayWithObjects:NSURLPboardType, nil]];
-}
-
+#pragma mark -Tableview Methods-
 // The only essential/required tableview dataSource method
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
 {
@@ -51,7 +101,7 @@
 // This method is optional if you use bindings to provide the data
 - (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row
 {
-  // Group our "model" object, which is an EXShareListItem
+  // Group our "model" object, which is an EXShareListItemCustomProperties
   EXShareListItemCustomProperties *item = [_tableContents objectAtIndex:row];
   
   NSString *identifier = [tableColumn identifier];
@@ -105,7 +155,6 @@
   
   return NSDragOperationNone;
 }
-
 
 - (BOOL)tableView:(NSTableView *)aTableView acceptDrop:(id <NSDraggingInfo>)info row:(NSInteger)row dropOperation:(NSTableViewDropOperation)operation
 {
@@ -200,7 +249,6 @@
   }
   
   CFRelease(sflRef);
-  
   
   [_tableView reloadData];
 }
@@ -297,8 +345,6 @@
     LSSharedFileListItemResolve(sflItemRef, kLSSharedFileListNoUserInteraction | kLSSharedFileListDoNotMountVolumes, &urlRef, NULL);
     
     NSString *aliasPath = (NSString *)CFBridgingRelease(CFURLCopyFileSystemPath(urlRef, kCFURLPOSIXPathStyle));
-    
-    NSLog(@"%@\t%s", (__bridge NSString *)nameRef, [aliasPath UTF8String]);
     
     if ([[url path] caseInsensitiveCompare:aliasPath] == NSOrderedSame &&
         [(__bridge NSString *)nameRef caseInsensitiveCompare:name] == NSOrderedSame)

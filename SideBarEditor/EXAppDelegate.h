@@ -17,4 +17,6 @@
 @property (retain) NSMutableArray *_tableContents;
 @property (weak) IBOutlet NSButton *refreshAction;
 
+- (void)openPath;
+
 @end
