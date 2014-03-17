@@ -20,6 +20,7 @@
 		F930776E18C807CB00DC1C0C /* SideBarEditorTests.m in Sources */ = {isa = PBXBuildFile; fileRef = F930776D18C807CB00DC1C0C /* SideBarEditorTests.m */; };
 		F930777918C8177B00DC1C0C /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F930777718C8177B00DC1C0C /* CoreFoundation.framework */; };
 		F930777A18C8177B00DC1C0C /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F930777818C8177B00DC1C0C /* CoreServices.framework */; };
+		F9A043C718D2AF5000503647 /* EXSharedListManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A043C618D2AF5000503647 /* EXSharedListManager.m */; };
 		F9ED80E318CBEA5800A59199 /* EXShareListItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F9ED80E218CBEA5800A59199 /* EXShareListItem.m */; };
 		F9ED80E718CD15FF00A59199 /* EXShareListItemCustomProperties.m in Sources */ = {isa = PBXBuildFile; fileRef = F9ED80E618CD15FF00A59199 /* EXShareListItemCustomProperties.m */; };
 /* End PBXBuildFile section */
@@ -38,7 +39,6 @@
 		F930774018C807CB00DC1C0C /* SideBarEditor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SideBarEditor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F930774318C807CB00DC1C0C /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		F930774618C807CB00DC1C0C /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
-		F930774718C807CB00DC1C0C /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
 		F930774818C807CB00DC1C0C /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		F930774B18C807CB00DC1C0C /* SideBarEditor-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "SideBarEditor-Info.plist"; sourceTree = "<group>"; };
 		F930774D18C807CB00DC1C0C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
@@ -56,6 +56,8 @@
 		F930776D18C807CB00DC1C0C /* SideBarEditorTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SideBarEditorTests.m; sourceTree = "<group>"; };
 		F930777718C8177B00DC1C0C /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = ../../../../../System/Library/Frameworks/CoreFoundation.framework; sourceTree = "<group>"; };
 		F930777818C8177B00DC1C0C /* CoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreServices.framework; path = ../../../../../System/Library/Frameworks/CoreServices.framework; sourceTree = "<group>"; };
+		F9A043C518D2AF5000503647 /* EXSharedListManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = EXSharedListManager.h; path = SideBarEditor/EXSharedListManager.h; sourceTree = "<group>"; };
+		F9A043C618D2AF5000503647 /* EXSharedListManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = EXSharedListManager.m; path = SideBarEditor/EXSharedListManager.m; sourceTree = "<group>"; };
 		F9ED80E118CBEA5800A59199 /* EXShareListItem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = EXShareListItem.h; path = SideBarEditor/EXShareListItem.h; sourceTree = "<group>"; };
 		F9ED80E218CBEA5800A59199 /* EXShareListItem.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = EXShareListItem.m; path = SideBarEditor/EXShareListItem.m; sourceTree = "<group>"; };
 		F9ED80E518CD15FF00A59199 /* EXShareListItemCustomProperties.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = EXShareListItemCustomProperties.h; path = SideBarEditor/EXShareListItemCustomProperties.h; sourceTree = "<group>"; };
@@ -88,6 +90,8 @@
 		F930773718C807CB00DC1C0C = {
 			isa = PBXGroup;
 			children = (
+				F9A043C518D2AF5000503647 /* EXSharedListManager.h */,
+				F9A043C618D2AF5000503647 /* EXSharedListManager.m */,
 				F9ED80E518CD15FF00A59199 /* EXShareListItemCustomProperties.h */,
 				F9ED80E618CD15FF00A59199 /* EXShareListItemCustomProperties.m */,
 				F9ED80E118CBEA5800A59199 /* EXShareListItem.h */,
@@ -124,7 +128,6 @@
 			isa = PBXGroup;
 			children = (
 				F930774618C807CB00DC1C0C /* AppKit.framework */,
-				F930774718C807CB00DC1C0C /* CoreData.framework */,
 				F930774818C807CB00DC1C0C /* Foundation.framework */,
 			);
 			name = "Other Frameworks";
@@ -274,6 +277,7 @@
 				F930775018C807CB00DC1C0C /* main.m in Sources */,
 				F9ED80E718CD15FF00A59199 /* EXShareListItemCustomProperties.m in Sources */,
 				F930775718C807CB00DC1C0C /* EXAppDelegate.m in Sources */,
+				F9A043C718D2AF5000503647 /* EXSharedListManager.m in Sources */,
 				F9ED80E318CBEA5800A59199 /* EXShareListItem.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

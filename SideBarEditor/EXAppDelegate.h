@@ -8,15 +8,18 @@
 
 #import <Cocoa/Cocoa.h>
 
+@class EXSharedListManager;
+
 @interface EXAppDelegate : NSObject <NSTableViewDelegate, NSTableViewDataSource>
 
-@property (assign) IBOutlet NSWindow *window;
-
+@property (weak) IBOutlet NSWindow *window;
 @property (weak) IBOutlet NSTableView *_tableView;
-
-@property (retain) NSMutableArray *_tableContents;
 @property (weak) IBOutlet NSButton *refreshAction;
 
+@property NSMutableArray *_tableContents;
+@property EXSharedListManager *_listManager;
+
+- (void)readSidebar;
 - (void)openPath;
 
 @end

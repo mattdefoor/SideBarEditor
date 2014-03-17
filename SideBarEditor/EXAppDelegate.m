@@ -8,13 +8,26 @@
 
 #import "EXAppDelegate.h"
 #import "EXShareListItemCustomProperties.h"
+#import "EXSharedListManager.h"
+
+@implementation EXAppDelegate (Private)
+
+static void EXSharedFileListChangedCallback(LSSharedFileListRef inList, void *context)
+{
+  EXAppDelegate *object = (__bridge EXAppDelegate *)context;
+  [object readSidebar];
+}
+
+@end
 
 @implementation EXAppDelegate
 
 @synthesize _tableView;
 @synthesize _tableContents;
+@synthesize _listManager;
 
 #pragma mark -Startup Methods-
+
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
   // Register for dragged types for drag and drop. We only accept NSURL types.
@@ -24,7 +37,21 @@
   
   _tableContents = [[NSMutableArray alloc] init];
 
+  _listManager = [[EXSharedListManager alloc] initWithListType:(__bridge NSString *)kLSSharedFileListFavoriteItems];
+  
+  if (_listManager)
+  {
+    [_listManager addListObserver:[NSRunLoop currentRunLoop] runLoopMode:NSDefaultRunLoopMode callback:EXSharedFileListChangedCallback context:(__bridge void *)(self)];
+  }
+  
   [self readSidebar];
+}
+
+#pragma mark -Shutdown Methods-
+
+- (void)applicationWillTerminate:(NSNotification *)aNotification
+{
+  [_listManager removeListObserver:[NSRunLoop currentRunLoop] runLoopMode:NSDefaultRunLoopMode callback:EXSharedFileListChangedCallback context:(__bridge void *)(self)];
 }
 
 #pragma mark -Action Methods-
@@ -56,11 +83,7 @@
       {
         CFBooleanRef boolRef = kCFBooleanTrue;
         NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:(__bridge id)(boolRef), @"Managed", nil];
-        
-        [self addToSharedList:url
-                         type:(__bridge NSString *)kLSSharedFileListFavoriteItems
-                   atPosition:kLSSharedFileListItemLast
-               withDictionary:dictionary];
+        [_listManager addToList:url atPosition:kLSSharedFileListItemLast withDictionary:dictionary];
       }
     }
   }];
@@ -72,26 +95,15 @@
   {
     EXShareListItemCustomProperties *item = [_tableContents objectAtIndex:[_tableView selectedRow]];
     
-    if ([self removeFromSharedList:[item url] type:nil name:[item name]])
+    if ([_listManager removeFromList:[item url] withName:[item name]])
     {
-      NSLog(@"Removed item \'%@\' for path \'%@\' from sidebar.", [item name], [[item url] path]);
       [self readSidebar];
     }
   }
 }
 
-- (void)openPath
-{
-  NSInteger row = [_tableView clickedRow];
-  
-  if (row != -1)
-  {
-    EXShareListItemCustomProperties *item = [_tableContents objectAtIndex:row];
-    [[NSWorkspace sharedWorkspace] openURL:[item url]];
-  }
-}
-
 #pragma mark -Tableview Methods-
+
 // The only essential/required tableview dataSource method
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
 {
@@ -170,12 +182,10 @@
     if ([isDirectory boolValue])
     {
       CFBooleanRef boolRef = kCFBooleanTrue;
+      
       NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:(__bridge id)(boolRef), @"Managed", nil];
-
-      if ([self addToSharedList:fileURL
-                       type:(__bridge NSString *)kLSSharedFileListFavoriteItems
-                 atPosition:kLSSharedFileListItemLast
-                 withDictionary:dictionary])
+      
+      if ([_listManager addToList:fileURL atPosition:kLSSharedFileListItemLast withDictionary:dictionary])
       {
         [self readSidebar];
       }
@@ -185,20 +195,13 @@
   return YES;
 }
 
+#pragma mark -Application Methods-
+
 - (void)readSidebar
 {
-  LSSharedFileListRef sflRef = [self sharedFileListRef:(__bridge NSString *)kLSSharedFileListFavoriteItems];
-  
-  if (!sflRef)
-  {
-    return;
-  }
-  
   [_tableContents removeAllObjects];
   
-  UInt32 seed;
-  
-  NSArray *list = (__bridge NSArray *)LSSharedFileListCopySnapshot(sflRef, &seed);
+  NSArray *list = [_listManager copyListItems];
   
   for (NSObject *object in list)
   {
@@ -207,18 +210,15 @@
     CFStringRef nameRef = LSSharedFileListItemCopyDisplayName(sflItemRef);
     
     CFURLRef urlRef = NULL;
+
     LSSharedFileListItemResolve(sflItemRef, kLSSharedFileListNoUserInteraction | kLSSharedFileListDoNotMountVolumes, &urlRef, NULL);
-    
-    NSString *aliasPath = (NSString*)CFBridgingRelease(CFURLCopyFileSystemPath(urlRef, kCFURLPOSIXPathStyle));
     
     UInt32 itemId = LSSharedFileListItemGetID(sflItemRef);
     
-    printf("%i\t%s\t%s\n", itemId, [(__bridge NSString*)nameRef UTF8String], [aliasPath UTF8String]);
-    
-    NSImage *icon = nil;
+    NSImage *icon;
     
     IconRef iconRef = LSSharedFileListItemCopyIconRef(sflItemRef);
-    if (iconRef)
+    if (!iconRef)
     {
       // Make a copy
       icon = [[NSImage alloc] initWithIconRef:iconRef];
@@ -247,127 +247,21 @@
     CFRelease(urlRef);
     CFRelease(nameRef);
   }
-  
-  CFRelease(sflRef);
-  
+
+  CFRelease((CFArrayRef)list);
+
   [_tableView reloadData];
 }
 
-- (BOOL)addToSharedList:(NSURL *)url
+- (void)openPath
 {
-  return [self addToSharedList:url type:nil atPosition:nil withDictionary:nil];
-}
-
-- (BOOL)addToSharedList:(NSURL *)url type:(NSString *)type
-{
-  return [self addToSharedList:url type:type atPosition:nil withDictionary:nil];
-}
-
-- (BOOL)addToSharedList:(NSURL *)url type:(NSString *)type atPosition:(LSSharedFileListItemRef)position
-{
-  return [self addToSharedList:url type:type atPosition:position withDictionary:nil];
-}
-
-- (BOOL)addToSharedList:(NSURL *)url type:(NSString *)type atPosition:(LSSharedFileListItemRef)position withDictionary:(NSDictionary *)dictionary
-{
-  BOOL bOK = NO;
+  NSInteger row = [_tableView clickedRow];
   
-  if (!url)
+  if (row != -1)
   {
-    return bOK;
+    EXShareListItemCustomProperties *item = [_tableContents objectAtIndex:row];
+    [[NSWorkspace sharedWorkspace] openURL:[item url]];
   }
-
-  // Get reference to shared file list. Don't forget to release it if not null!
-  LSSharedFileListRef sflRef = [self sharedFileListRef:type];
-  
-  if (!sflRef)
-  {
-    return bOK;
-  }
-
-  if (!type)
-  {
-    type = (__bridge NSString *)kLSSharedFileListFavoriteItems;
-  }
-
-  if (!position)
-  {
-    position = kLSSharedFileListItemLast;
-  }
-  
-  // Actual insertion of an item.
-  LSSharedFileListItemRef item = LSSharedFileListInsertItemURL(sflRef, position, NULL, NULL, (__bridge CFURLRef)url, (__bridge CFDictionaryRef)dictionary, NULL);
-  
-  // Clean up in case of success
-  if (item)
-  {
-    bOK = YES;
-    CFRelease(item);
-  }
-
-  CFRelease(sflRef);
-  
-  return bOK;
-}
-
-- (BOOL)removeFromSharedList:(NSURL *)url type:(NSString *)type name:(NSString *)name
-{
-  if (!url && !name)
-  {
-    return NO;
-  }
-
-  if (!type)
-  {
-    type = (__bridge NSString *)kLSSharedFileListFavoriteItems;
-  }
-
-  // Get reference to shared file list. Don't forget to release it if not null!
-  LSSharedFileListRef sflRef = [self sharedFileListRef:type];
-  
-  if (!sflRef)
-  {
-    return NO;
-  }
-
-  OSStatus status = noErr;
-  UInt32 seed;
-  
-  NSArray *list = (__bridge NSArray *)LSSharedFileListCopySnapshot(sflRef, &seed);
-  
-  for (NSObject *object in list)
-  {
-    LSSharedFileListItemRef sflItemRef = (__bridge LSSharedFileListItemRef)object;
-    
-    CFStringRef nameRef = LSSharedFileListItemCopyDisplayName(sflItemRef);
-    
-    CFURLRef urlRef = NULL;
-    LSSharedFileListItemResolve(sflItemRef, kLSSharedFileListNoUserInteraction | kLSSharedFileListDoNotMountVolumes, &urlRef, NULL);
-    
-    NSString *aliasPath = (NSString *)CFBridgingRelease(CFURLCopyFileSystemPath(urlRef, kCFURLPOSIXPathStyle));
-    
-    if ([[url path] caseInsensitiveCompare:aliasPath] == NSOrderedSame &&
-        [(__bridge NSString *)nameRef caseInsensitiveCompare:name] == NSOrderedSame)
-    {
-      status = LSSharedFileListItemRemove(sflRef, sflItemRef);
-    }
-    
-    CFRelease(urlRef);
-    CFRelease(nameRef);
-  }
-
-  CFRelease(sflRef);
-  
-  return status == noErr;
-}
-
-- (LSSharedFileListRef)sharedFileListRef:(NSString *)type
-{
-  // Reference to shared file list. Caller is responsible for releasing returned
-  // LSSharedFileListRef per the LaunchServices LSSharedFileList.h file.
-  LSSharedFileListRef sflItemRef = LSSharedFileListCreate(NULL, (__bridge CFStringRef)type, NULL);
-  
-  return sflItemRef;
 }
 
 @end
